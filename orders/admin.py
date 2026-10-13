@@ -72,18 +72,21 @@ class OrderForShopAdmin(admin.ModelAdmin):
 
     # enable shop users to view orders
     def has_view_permission(self, request: HttpRequest, obj=None) -> bool:
-        if (request.user.is_superuser) or (request.user.type == 'shop'):
-            return True
+        if request.user.is_authenticated:
+            if (request.user.is_superuser) or (request.user.type == 'shop'):
+                return True
         return super().has_view_permission(request, obj)
 
     # enable shop users to change orders (only its state - see readonly fields above)
     def has_change_permission(self, request: HttpRequest, obj=None) -> bool:
-        if (request.user.is_superuser) or (request.user.type == 'shop'):
-            return True
+        if request.user.is_authenticated:
+            if (request.user.is_superuser) or (request.user.type == 'shop'):
+                return True
         return super().has_change_permission(request, obj)
 
     # show model in Django admin's model list for shop users
     def has_module_permission(self, request: HttpRequest) -> bool:
-        if (request.user.is_superuser) or (request.user.type == 'shop'):
-            return True
+        if request.user.is_authenticated:
+            if (request.user.is_superuser) or (request.user.type == 'shop'):
+                return True
         return super().has_module_permission(request)
