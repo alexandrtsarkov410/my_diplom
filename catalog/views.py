@@ -1,11 +1,12 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.http import JsonResponse
-from django.db.models import Q
 from django.urls import reverse
 from requests import get
+from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.request import Request
@@ -13,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_yaml.renderers import YAMLRenderer
 
-from catalog.models import Shop, Category, ProductInfo, ConfirmEmailToken
+from catalog.models import Shop, Category, ProductInfo, ConfirmEmailToken, ProductPriceHistory
 from catalog.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer
 
 from shop.tasks import update_partner_info, export_partner_info
@@ -148,27 +149,56 @@ class ShopView(ListAPIView):
 class ProductInfoView(APIView):
     """
     Эндпоинт для поиска и фильтрации информации о товарах
+
+    Для оптимизации GET-запросов к каталогу интегрировано
+    кэширование на уровне приложения с использованием Redis в качестве бэкенда.
+    Это снижает нагрузку на СУБД PostgreSQL и уменьшает время ответа.
     """
-    def get(self, request: Request, *args, **kwargs):
-        query = Q(shop__state=True)
-        shop_id = request.query_params.get('shop_id')
-        category_id = request.query_params.get('category_id')
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Метод обработки GET-запроса.
+        """
+        # Извлекаем параметры фильтрации из входящего GET-запроса
+        shop_id: str = request.query_params.get('shop_id')
+        category_id: str = request.query_params.get('category_id')
+
+        # Формируем динамический ключ КЭША:
+        cache_key: str = f"products_data_shop_{shop_id}_cat_{category_id}"
+
+        # Попытка извлечь уже готовый сериализованный результат из Redis
+        cached_data = cache.get(cache_key)
+
+        # Проверка на наличие данных в кэше
+        if cached_data is not None:
+            return Response(
+                {"source": "cache_redis", "data": cached_data},
+                status=status.HTTP_200_OK
+            )
+
+        # Если данных в кэше нет, выполняем чтение из PostgreSQL.
+        queryset = ProductInfo.objects.filter(product__items__isnull=False)
 
         if shop_id:
-            query = query & Q(shop_id=shop_id)
-
+            queryset = queryset.filter(shop_id=shop_id)
         if category_id:
-            query = query & Q(product__category_id=category_id)
+            queryset = queryset.filter(product__category_id=category_id)
 
-        # Оптимальная выборка связанных данных, чтобы база не висла от запросов
-        queryset = ProductInfo.objects.filter(query).select_related(
-            'shop', 'product__category'
-        ).prefetch_related(
-            'product_parameters__parameter'
-        ).distinct()
+        # Предвыборка связанных сущностей (категории и магазины) в один SQL-запрос
+        queryset = queryset.select_related('shop', 'product__category').distinct()
 
+        # Сериализация выборки из БД
         serializer = ProductInfoSerializer(queryset, many=True)
-        return Response(serializer.data)
+        serialized_data = serializer.data
+
+        # Сохраняем сериализованные данные на 60 секунд.
+        # Выбран короткий жизненный цикл для сохранения
+        # баланса между скоростью ответа и актуальностью остатков на складе.
+        cache.set(cache_key, serialized_data, timeout=60)
+
+        return Response(
+            {"source": "database_postgres", "data": serialized_data},
+            status=status.HTTP_200_OK
+        )
 
 
 class PartnerUpdate(APIView):

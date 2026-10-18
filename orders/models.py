@@ -1,5 +1,5 @@
 from django.db import models
-from catalog.models import User, ProductInfo
+from catalog.models import User, ProductInfo, ProductPriceHistory
 
 STATE_CHOICES = (
     ('basket', 'Статус корзины'),

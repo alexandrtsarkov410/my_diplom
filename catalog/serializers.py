@@ -1,5 +1,9 @@
+import re
+
 from rest_framework import serializers
-from catalog.models import User, Category, Shop, Product, ProductInfo, ProductParameter
+from rest_framework.exceptions import ValidationError
+
+from catalog.models import User, Category, Shop, Product, ProductInfo, ProductParameter, ProductPriceHistory
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -14,6 +18,26 @@ class UserSerializer(serializers.ModelSerializer):
     def get_contacts(self, obj):
         from orders.serializers import ContactSerializer
         return ContactSerializer(obj.contacts.all(), many=True).data
+
+    def validate_password(self, value: str) -> str:
+        """
+        Валидатор паролей на соответствие корпоративным политикам безопасности.
+
+        КРИТЕРИИ ПРОВЕРКИ:
+        - Минимальная длина: 12 символов.
+        - Обязательное наличие строчных и заглавных латинских букв.
+        - Обязательное наличие хотя бы одной цифры.
+        - Обязательное наличие спецсимвола (!@#$%^&* и т.д.).
+        """
+        if len(value) < 12:
+            raise ValidationError("Пароль слишком короткий (не менее 12 символов).")
+        if not re.search(r"[a-z]", value) or not re.search(r"[A-Z]", value):
+            raise ValidationError("Пароль должен содержать заглавные и строчные буквы.")
+        if not re.search(r"\d", value):
+            raise ValidationError("Пароль должен содержать хотя бы одну цифру.")
+        if not re.search(r"[ !@#$%^&*(),.?\":{}|<>_+-]", value):
+            raise ValidationError("Пароль должен содержать спецсимвол.")
+        return value
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -46,9 +70,19 @@ class ProductParameterSerializer(serializers.ModelSerializer):
         fields = ('parameter', 'value',)
 
 
+class ProductPriceHistorySerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для представления истории цен товара.
+    """
+    class Meta:
+        model = ProductPriceHistory
+        fields = ('old_price', 'new_price', 'changed_at')
+
+
 class ProductInfoSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     product_parameters = ProductParameterSerializer(read_only=True, many=True)
+    price_history = ProductPriceHistorySerializer(many=True, read_only=True)  # Добавляем поле
 
     class Meta:
         model = ProductInfo

@@ -138,6 +138,29 @@ class Product(models.Model):
         return self.name
 
 
+class ProductPriceHistory(models.Model):
+    """
+    Создание истории изменения цен на продукты.
+
+    НАЗНАЧЕНИЕ:
+    Обеспечивает возможность анализировать изменения цен на товары во времени.
+    """
+    product_info = models.ForeignKey(
+        'ProductInfo',
+        on_delete=models.CASCADE,
+        related_name='price_history',
+        verbose_name='Информация о продукте'
+    )
+    old_price = models.PositiveIntegerField(verbose_name='Старая цена')
+    new_price = models.PositiveIntegerField(verbose_name='Новая цена')
+    changed_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата изменения')
+
+    class Meta:
+        verbose_name = 'История цены товара'
+        verbose_name_plural = 'История цен товаров'
+        ordering = ('-changed_at',)
+
+
 class ProductInfo(models.Model):
     """ Информация о продуктах """
     objects = models.manager.Manager()
@@ -160,6 +183,28 @@ class ProductInfo(models.Model):
 
     def __str__(self):
         return self.product.name
+
+    def save(self, *args, **kwargs) -> None:
+        """
+        Сохранения модели ProductInfo.
+
+        ЛОГИКА РАБОТЫ:
+        Перед записью данных в PostgreSQL проверяет, существовал ли объект ранее (self.pk).
+        Если объект существовал, сравнивает текущую цену с ценой из базы данных.
+        При обнаружении расхождения автоматически создает запись в таблице ProductPriceHistory.
+        """
+        if self.pk:
+            try:
+                old_instance = type(self).objects.get(pk=self.pk)
+                if old_instance.price != self.price:
+                    ProductPriceHistory.objects.create(
+                        product_info=self,
+                        old_price=old_instance.price,
+                        new_price=self.price
+                    )
+            except type(self).DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
 
 
 class Parameter(models.Model):
