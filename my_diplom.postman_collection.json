@@ -1,0 +1,24 @@
+{
+	"id": "my-diplom-collection",
+	"name": "My Diplom API",
+	"requests": [
+		{
+			"id": "req-categories",
+			"headers": "",
+			"url": "http://127.0.0",
+			"method": "GET",
+			"data": null,
+			"dataMode": "params",
+			"name": "Catalog Categories"
+		},
+		{
+			"id": "req-products",
+			"headers": "",
+			"url": "http://127.0.0",
+			"method": "GET",
+			"data": null,
+			"dataMode": "params",
+			"name": "Catalog Products"
+		}
+	]
+}
