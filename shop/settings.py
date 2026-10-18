@@ -82,10 +82,10 @@ WSGI_APPLICATION = 'shop.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'NAME': os.getenv('POSTGRES_DB', 'my_diplom'),
+        'USER': os.getenv('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', '12345678'),
+        'HOST': os.getenv('POSTGRES_HOST', 'db'),
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
@@ -132,14 +132,24 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
+    "default": {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "HOST": os.getenv('EMAIL_HOST', 'smtp.mail.ru'),
+        "PORT": int(os.getenv('EMAIL_PORT') or 465),
+        "USER": os.getenv('EMAIL_USER', 'my.diplom@mail.ru'),
+        "PASSWORD": os.getenv('EMAIL_PASSWORD', 'CLdm7yW4U9nivz9mbexu'),
+        "USE_SSL": True,
+    }
 }
 
-AUTH_USER_MODEL = 'catalog.User'
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_USER', 'my.diplom@mail.ru')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
-CELERY_TASK_ALWAYS_EAGER = True
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend', # Оставляем стандартный
+]
+
+AUTH_USER_MODEL = 'catalog.User'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -147,3 +157,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
 }
+
+# Celery configuration options
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/1')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://127.0.0.1:6379/2')

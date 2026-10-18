@@ -1,0 +1,89 @@
+version: '3.9'
+
+x-env-db: &db-env
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_HOST: ${POSTGRES_HOST:-db}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  POSTGRES_PORT_PUB: ${POSTGRES_PORT_PUB:-5432}
+
+x-env-email: &email-env
+  EMAIL_HOST: ${EMAIL_HOST}
+  EMAIL_USER: ${EMAIL_USER}
+  EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+  EMAIL_PORT: ${EMAIL_PORT}
+
+x-env-celery: &celery-env
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+volumes:
+  db-data:
+
+services:
+
+  redis:
+    image: redis:7.2.4-alpine3.19
+    restart: unless-stopped
+    command: redis-server
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:16.2-alpine3.19
+    environment:
+      <<: *db-env
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT_PUB:-5433}:${POSTGRES_PORT:-5432}"
+
+  app:
+    build: .
+    command:
+      - /bin/sh
+      - -c
+      - |
+        python manage.py makemigrations
+        python manage.py migrate
+        python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    environment:
+      <<: [*db-env, *email-env, *celery-env]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery_worker:
+    build: .
+    command: celery -A shop worker -l INFO
+    environment:
+      <<: [*db-env, *email-env, *celery-env]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery_flower:
+    build: .
+    command: celery -A shop flower -l INFO
+    ports:
+      - "5555:5555"
+    environment:
+      <<: [*db-env, *email-env, *celery-env]
+    depends_on:
+      - redis
+      - db

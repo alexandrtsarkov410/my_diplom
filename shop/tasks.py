@@ -1,5 +1,4 @@
 from celery import shared_task
-from celery.contrib.django.task import DjangoTask
 from django.core.mail import EmailMultiAlternatives
 from yaml import load as load_yaml, Loader
 
@@ -8,7 +7,7 @@ from catalog.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 from catalog.serializers import ShopExportSerializer
 
 
-@shared_task(base=DjangoTask)
+@shared_task
 def send_email(title, message, sender, recipients):
     """ Асинхронная отправка email через Django mail backend """
     msg = EmailMultiAlternatives(

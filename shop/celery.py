@@ -4,9 +4,9 @@ from celery import Celery
 from celery.result import AsyncResult
 
 # Set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'netology_pd_diplom.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'shop.settings')
 
-celery_app = Celery('netology_pd_diplom_celery')
+celery_app = Celery('shop')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.
