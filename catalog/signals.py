@@ -17,7 +17,7 @@ def password_reset_token_created(sender, instance, reset_password_token, **kwarg
     send_email.delay_on_commit(
         title=f"Password Reset Token for {reset_password_token.user}",
         message=reset_password_token.key,
-        sender=settings.EMAIL_HOST_USER,
+        sender=settings.DEFAULT_FROM_EMAIL,
         recipients=[reset_password_token.user.email],
     )
 
@@ -31,6 +31,6 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
         send_email.delay_on_commit(
             title=f"Confirm Email Token for {instance.email}",
             message=token.key,
-            sender=settings.EMAIL_HOST_USER,
+            sender=settings.DEFAULT_FROM_EMAIL,
             recipients=[instance.email],
         )

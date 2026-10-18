@@ -16,6 +16,6 @@ def new_order_signal(user_id, **kwargs):
     send_email.delay_on_commit(
         title="Обновление статуса заказа",
         message='Заказ сформирован',
-        sender=settings.EMAIL_HOST_USER,
+        sender=settings.DEFAULT_FROM_EMAIL,
         recipients=[user.email],
     )
