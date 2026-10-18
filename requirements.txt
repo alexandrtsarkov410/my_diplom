@@ -13,6 +13,7 @@ django-rest-passwordreset==1.6.0
 djangorestframework==3.18.3
 djangorestframework-yaml==2.0.0
 idna==3.20
+flower==2.0.1
 packaging==26.3
 prompt_toolkit==3.0.53
 psycopg2-binary==2.9.9

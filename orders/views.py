@@ -169,10 +169,10 @@ class PartnerOrders(APIView):
         order.save()
 
         # Отправляем уведомление клиенту об изменении статуса его заказа
-        send_email.delay_on_commit(
+        send_email.delay(
             title=f'Обновление статуса заказа № {order_id}',
             message=f'Новый статус вашего заказа: {dict(STATE_CHOICES).get(order.state)}',
-            sender=settings.EMAIL_HOST_USER,
+            sender=settings.DEFAULT_FROM_EMAIL,
             recipients=[order.user.email],
         )
 

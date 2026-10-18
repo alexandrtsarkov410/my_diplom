@@ -13,7 +13,7 @@ def new_order_signal(user_id, **kwargs):
     """ Отправляем письмо покупателю, что его заказ сформирован """
     user = User.objects.get(id=user_id)
 
-    send_email.delay_on_commit(
+    send_email.delay(
         title="Обновление статуса заказа",
         message='Заказ сформирован',
         sender=settings.DEFAULT_FROM_EMAIL,

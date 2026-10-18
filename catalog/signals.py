@@ -14,7 +14,7 @@ new_user_registered = Signal()
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, **kwargs):
     """ Отправляем письмо с токеном для сброса пароля через Celery """
-    send_email.delay_on_commit(
+    send_email.delay(
         title=f"Password Reset Token for {reset_password_token.user}",
         message=reset_password_token.key,
         sender=settings.DEFAULT_FROM_EMAIL,
@@ -28,7 +28,7 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     if created and not instance.is_active:
         token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
 
-        send_email.delay_on_commit(
+        send_email.delay(
             title=f"Confirm Email Token for {instance.email}",
             message=token.key,
             sender=settings.DEFAULT_FROM_EMAIL,
