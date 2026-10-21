@@ -57,7 +57,7 @@ docker compose exec app python manage.py test
    ```
 2. **Перейти в корень проекта (директорию с файлом docker-compose.yml):**
    ```bash
-   cd My_diplom
+   cd .
    ```
 3. **Запустить сборку и старт всех контейнеров в фоновом режиме:**
    ```bash
